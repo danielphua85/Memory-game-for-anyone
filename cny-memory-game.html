@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CNY Memory Challenge</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Arial, 'Noto Serif SC', sans-serif;
+  background: #7a0000;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.gold-strip { position: fixed; left: 0; right: 0; height: 8px; z-index: 200;
+  background: linear-gradient(90deg, #7a0000, #ffd700, #c8860a, #ffd700, #7a0000); }
+.gold-strip.top { top: 0; }
+.gold-strip.bot { bottom: 0; }
+
+.lanterns { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.lantern { position: absolute; font-size: 1.8rem; opacity: 0.18; animation: floatUp linear infinite; }
+@keyframes floatUp {
+  0%   { transform: translateY(110vh); opacity: 0; }
+  8%   { opacity: 0.18; }
+  92%  { opacity: 0.18; }
+  100% { transform: translateY(-15vh); opacity: 0; }
+}
+
+#app {
+  position: relative; z-index: 1;
+  padding: 28px 14px 60px;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh;
+}
+
+.screen { display: none; width: 100%; max-width: 640px; }
+.screen.active { display: flex; flex-direction: column; align-items: center; }
+
+/* ── WELCOME ── */
+#welcomeScreen { text-align: center; }
+
+.hero-icon {
+  font-size: 5rem; display: block; margin-bottom: 6px;
+  filter: drop-shadow(0 0 18px rgba(255,215,0,0.9));
+  animation: glow 2s ease-in-out infinite;
+}
+@keyframes glow {
+  0%,100% { filter: drop-shadow(0 0 18px rgba(255,215,0,0.8)); }
+  50%     { filter: drop-shadow(0 0 36px #ffd700); }
+}
+
+.game-title {
+  font-size: clamp(1.8rem, 7vw, 2.8rem); font-weight: 900;
+  color: #ffd700;
+  text-shadow: 2px 3px 0 #4a0000, 0 0 25px rgba(255,215,0,0.5);
+  line-height: 1.2; margin-bottom: 4px;
+}
+.game-subtitle { font-size: 1rem; color: #ffe8a0; margin-bottom: 14px; font-style: italic; }
+
+.by-badge {
+  display: inline-block; background: rgba(0,0,0,0.4);
+  border: 2px solid #ffd700; border-radius: 50px;
+  padding: 8px 20px; color: #ffe8a0; font-size: 0.9rem; margin-bottom: 22px;
+}
+.by-badge b { color: #ffd700; }
+
+.info-card {
+  background: rgba(0,0,0,0.45); border: 2px solid #c8860a;
+  border-radius: 16px; padding: 16px 18px; margin-bottom: 14px; width: 100%; text-align: left;
+}
+.card-heading { font-size: 1.05rem; font-weight: 700; color: #ffd700; margin-bottom: 10px; }
+
+.benefit-list { list-style: none; }
+.benefit-list li {
+  color: #ffffff; font-size: 0.92rem; padding: 5px 0;
+  line-height: 1.5; display: flex; gap: 8px; align-items: flex-start;
+}
+.benefit-list li::before { content: '✦'; color: #ffd700; flex-shrink: 0; margin-top: 2px; }
+
+.rule-list { display: flex; flex-direction: column; gap: 8px; }
+.rule-row {
+  background: rgba(255,215,0,0.12); border-left: 4px solid #ffd700;
+  border-radius: 8px; padding: 9px 12px; color: #ffffff; font-size: 0.9rem; line-height: 1.5;
+}
+.rule-row b { color: #ffd700; }
+
+.legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.legend-box { background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.4); border-radius: 10px; padding: 10px 8px; text-align: center; }
+.legend-box .lic { font-size: 2.2rem; }
+.legend-box .ltx { color: #ffffff; font-size: 0.8rem; margin-top: 4px; line-height: 1.4; }
+
+.divider { width: 80%; height: 1px; background: linear-gradient(90deg,transparent,#ffd700,transparent); margin: 16px auto; }
+
+.level-label { font-size: 1.3rem; font-weight: 900; color: #ffd700; margin-bottom: 12px; text-align: center; }
+.level-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; width: 100%; margin-bottom: 16px; }
+
+.lbtn {
+  border: none; cursor: pointer; border-radius: 14px;
+  padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  transition: transform 0.2s; position: relative;
+}
+.lbtn:hover  { transform: scale(1.07); }
+.lbtn:active { transform: scale(0.94); }
+.lbtn.easy { background: linear-gradient(135deg,#2ecc71,#1a7a40); box-shadow: 0 5px 18px rgba(46,204,113,0.5); }
+.lbtn.med  { background: linear-gradient(135deg,#e6b820,#9a7200); box-shadow: 0 5px 18px rgba(230,184,32,0.5); }
+.lbtn.hard { background: linear-gradient(135deg,#e74c3c,#7a0000); box-shadow: 0 5px 18px rgba(231,76,60,0.5); }
+.lbtn .lico   { font-size: 2.2rem; }
+.lbtn .lname  { font-size: 0.95rem; font-weight: 900; color: #fff; }
+.lbtn .lsub   { font-size: 0.75rem; color: rgba(255,255,255,0.85); }
+.lbtn .lbadge { position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.25); border-radius: 20px; padding: 2px 7px; font-size: 0.67rem; color: #fff; font-weight: 700; }
+
+/* ── GAME SCREEN ── */
+#gameScreen { padding-top: 6px; }
+
+.game-bar {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  background: rgba(0,0,0,0.4); border: 2px solid #c8860a;
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
+}
+.glevel { font-size: 0.82rem; font-weight: 700; color: #ffd700; text-transform: uppercase; letter-spacing: 1px; }
+.gtimer { font-size: 2rem; font-weight: 900; color: #ffd700; min-width: 55px; text-align: center; }
+.gtimer.urg { color: #ff4444; animation: urg 0.5s ease-in-out infinite; }
+@keyframes urg { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+.gphase { font-size: 0.8rem; color: #ffe8a0; text-align: right; line-height: 1.4; }
+
+.instruct {
+  width: 100%; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,215,0,0.4);
+  border-radius: 12px; padding: 11px 14px; text-align: center;
+  color: #ffffff; font-size: 0.95rem; font-weight: 700;
+  margin-bottom: 16px; min-height: 46px;
+  display: flex; align-items: center; justify-content: center; line-height: 1.5;
+}
+
+/* ─────────────────────────────────────────
+   CARDS AREA — uses a fixed-height container
+   Cards are absolutely positioned inside it
+   so JS can move them by setting left/top
+───────────────────────────────────────── */
+.cards-stage {
+  position: relative;
+  width: 100%;
+  margin-bottom: 16px;
+  /* height set by JS based on card count */
+}
+
+/* Each card is absolutely positioned */
+.card-wrap {
+  position: absolute;
+  /* width/height set by JS */
+  transition: left 0.9s cubic-bezier(0.4,0,0.2,1),
+              top  0.9s cubic-bezier(0.4,0,0.2,1);
+}
+/* During a swap, briefly lift card */
+.card-wrap.lifting {
+  z-index: 10;
+  transition: left 0.9s cubic-bezier(0.4,0,0.2,1),
+              top  0.9s cubic-bezier(0.4,0,0.2,1),
+              transform 0.45s ease;
+  transform: scale(1.08) translateY(-8px);
+}
+.card-wrap.settling {
+  transform: scale(1) translateY(0);
+  transition: left 0.9s cubic-bezier(0.4,0,0.2,1),
+              top  0.9s cubic-bezier(0.4,0,0.2,1),
+              transform 0.3s ease 0.6s;
+}
+
+/* 3-D flip wrapper */
+.card-inner {
+  width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s ease;
+  position: relative;
+}
+.card-inner.open { transform: rotateY(180deg); }
+
+.cfront, .cback {
+  position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+}
+
+/* Ang Bao back */
+.cback {
+  background: linear-gradient(145deg,#f01c2c 0%,#c0392b 45%,#8b0000 100%);
+  border: 3px solid #ffd700;
+}
+.cback-char { font-size: 3.5rem; color: rgba(255,215,0,0.55); line-height: 1; }
+.cback-bot  { font-size: 1.4rem; position: absolute; bottom: 8px; right: 9px; opacity: 0.4; }
+.cback-rim  { position: absolute; inset: 7px; border: 2px solid rgba(255,215,0,0.3); border-radius: 9px; }
+
+/* Card fronts */
+.cfront { transform: rotateY(180deg); padding: 10px; gap: 6px; }
+.cfront.csye { background: linear-gradient(145deg,#fff5e0,#ffd890); border: 3px solid #c8860a; }
+.cfront.cgin { background: linear-gradient(145deg,#fffde0,#fff4a0); border: 3px solid #e6b820; }
+.cfront.cfac { background: linear-gradient(145deg,#e5f9e5,#b8f0b8); border: 3px solid #27a327; }
+.cfront.cman { background: linear-gradient(145deg,#fff3e0,#ffd8a0); border: 3px solid #e07000; }
+
+.cicon  { width: 66px; height: 66px; display: block; flex-shrink: 0; }
+@media(max-width:480px){ .cicon { width: 50px; height: 50px; } }
+.clabel { font-size: 0.72rem; font-weight: 700; text-align: center; line-height: 1.3; }
+.cfront.csye .clabel { color: #6b3800; }
+.cfront.cgin .clabel { color: #5a3d00; }
+.cfront.cfac .clabel { color: #1a5c1a; }
+.cfront.cman .clabel { color: #7a3400; }
+
+/* Position label above each card */
+.cpos-label {
+  position: absolute; top: -22px; left: 0; right: 0;
+  text-align: center; color: #ffe8a0; font-size: 0.72rem; font-weight: 700;
+  pointer-events: none;
+}
+
+/* Progress bar */
+.prog-wrap { width: 100%; background: rgba(0,0,0,0.3); border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 14px; display: none; }
+.prog-bar  { height: 100%; background: linear-gradient(90deg,#ffd700,#e8192c); border-radius: 8px; width: 100%; transition: width 0.12s linear; }
+
+/* ── ANSWER SCREEN ── */
+.ans-title { font-size: 1.5rem; font-weight: 900; color: #ffd700; text-align: center; margin-bottom: 6px; }
+.ans-sub   { font-size: 0.95rem; color: #ffe8a0; text-align: center; margin-bottom: 18px; }
+.ans-list  { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+
+.ans-btn {
+  border: 2px solid rgba(255,215,0,0.45); cursor: pointer;
+  background: rgba(0,0,0,0.4); border-radius: 14px; padding: 13px 14px;
+  display: flex; align-items: center; gap: 12px; text-align: left; transition: all 0.2s;
+}
+.ans-btn:hover  { background: rgba(255,215,0,0.18); border-color: #ffd700; transform: translateX(4px); }
+.ans-btn.correct { background: rgba(39,174,96,0.35); border-color: #27ae60 !important; }
+.ans-btn.wrong   { background: rgba(192,57,43,0.35);  border-color: #c0392b !important; animation: shake 0.4s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+.ans-letter {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+  background: linear-gradient(135deg,#ffd700,#e8192c);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 1rem; color: #fff;
+}
+.ans-content { flex: 1; }
+.ans-icons { font-size: 1.4rem; margin-bottom: 4px; }
+.ans-text  { color: #ffffff; font-size: 0.88rem; line-height: 1.5; }
+.ans-text b { color: #ffd700; }
+
+/* ── RESULT SCREEN ── */
+#resultScreen { text-align: center; padding-top: 10px; }
+.res-emoji { font-size: 5.5rem; display: block; animation: pop 0.6s cubic-bezier(0.34,1.56,0.64,1); margin-bottom: 6px; }
+@keyframes pop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+.res-title { font-size: clamp(1.8rem,7vw,3rem); font-weight: 900; margin-bottom: 8px; line-height: 1.2; }
+.res-title.win  { color: #ffd700; text-shadow: 0 0 25px rgba(255,215,0,0.8); }
+.res-title.lose { color: #ff9090; }
+.res-msg { color: #ffffff; font-size: 1rem; margin-bottom: 20px; line-height: 1.6; padding: 0 8px; }
+
+.res-reveal { background: rgba(0,0,0,0.4); border: 2px solid #c8860a; border-radius: 14px; padding: 14px; margin-bottom: 20px; width: 100%; }
+.res-rtitle { color: #ffd700; font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; text-align: center; }
+.res-row    { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.res-item   { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.res-mini   { width: 58px; height: 58px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.1rem; border: 2px solid #ffd700; background: rgba(0,0,0,0.25); }
+.res-plabel { font-size: 0.72rem; color: #ffe8a0; font-weight: 700; text-align: center; line-height: 1.3; }
+
+.btn-gold {
+  background: linear-gradient(135deg,#ffd700,#c8860a); color: #3a1a00;
+  border: none; cursor: pointer; border-radius: 50px; padding: 14px 36px;
+  font-size: 1.05rem; font-weight: 900;
+  box-shadow: 0 5px 18px rgba(255,215,0,0.45); transition: transform 0.2s;
+  display: block; width: 100%; margin-bottom: 10px;
+}
+.btn-gold:hover  { transform: scale(1.05); }
+.btn-gold:active { transform: scale(0.95); }
+.btn-line {
+  background: transparent; color: #ffe8a0;
+  border: 2px solid rgba(255,215,0,0.5); cursor: pointer; border-radius: 50px;
+  padding: 11px 28px; font-size: 0.9rem; font-weight: 700; transition: all 0.2s; width: 100%;
+}
+.btn-line:hover { border-color: #ffd700; color: #ffd700; }
+
+/* Confetti / fireworks */
+.cpx { position: fixed; border-radius: 2px; animation: cfll linear forwards; pointer-events: none; z-index: 999; }
+@keyframes cfll { 0%{opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0;} }
+.fwp { position: fixed; width: 8px; height: 8px; border-radius: 50%; animation: fwburst 1s ease-out forwards; pointer-events: none; z-index: 998; }
+@keyframes fwburst { 0%{transform:translate(0,0);opacity:1} 100%{transform:translate(var(--tx),var(--ty));opacity:0;} }
+</style>
+</head>
+<body>
+
+<div class="gold-strip top"></div>
+<div class="gold-strip bot"></div>
+<div class="lanterns" id="lanterns"></div>
+
+<div id="app">
+
+  <!-- ═══ WELCOME ═══ -->
+  <div class="screen active" id="welcomeScreen">
+    <span class="hero-icon">🧧</span>
+    <div class="game-title">财神爷记忆挑战</div>
+    <div class="game-subtitle">Cai Shen Ye Memory Challenge</div>
+    <div class="by-badge">🏋️ Created by <b>Coach Daniel Phua</b> · Tzu Chi Foundation Singapore</div>
+
+    <div class="info-card">
+      <div class="card-heading">🧠 Benefits of Playing 训练好处</div>
+      <ul class="benefit-list">
+        <li>Sharpens processing speed — react faster in daily life 提高反应速度</li>
+        <li>Strengthens working memory — remember names &amp; tasks better 加强记忆力</li>
+        <li>Brain games can delay memory decline by up to 2.5 years 延缓记忆衰退</li>
+        <li>Boosts mood, confidence &amp; mental well-being 心情好，脑子灵！</li>
+        <li>Fun way to stay mentally young! 保持年轻活力！</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="card-heading">📜 How to Play 怎么玩</div>
+      <div class="rule-list">
+        <div class="rule-row">👀 <b>Step 1 — Memorise (5 sec):</b> Cards are revealed. Remember each card and its position!</div>
+        <div class="rule-row">🔄 <b>Step 2 — Shuffle (30 sec):</b> Cards flip over and physically swap places. Stay focused!</div>
+        <div class="rule-row">🤔 <b>Step 3 — Guess:</b> Choose the correct order from multiple choice. 选择正确顺序！</div>
+        <div class="rule-row">🎉 Correct = <b>Awesome!</b> &nbsp;|&nbsp; 😅 Wrong = <b>Better Luck Next Time!</b></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="card-heading">🎴 The 4 Lucky Cards 四张幸运牌</div>
+      <div class="legend-grid">
+        <div class="legend-box">
+          <div class="lic"><svg viewBox="0 0 100 120" width="52" height="62" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="84" height="94" rx="10" fill="#e8192c"/><rect x="8" y="18" width="84" height="94" rx="10" fill="none" stroke="#ffd700" stroke-width="4"/><path d="M8 38 Q50 58 92 38" fill="none" stroke="#ffd700" stroke-width="2.5" opacity="0.7"/><circle cx="50" cy="68" r="20" fill="#ffd700"/><text x="50" y="75" text-anchor="middle" font-size="22" font-family="serif" font-weight="900" fill="#c0392b">福</text><path d="M18 22 Q50 10 82 22" fill="#e8192c" stroke="#ffd700" stroke-width="2"/></svg></div>
+          <div class="ltx">Red Packet 红包</div>
+        </div>
+        <div class="legend-box">
+          <div class="lic"><svg viewBox="0 0 100 100" width="52" height="52" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="44" fill="#c0c0c0" stroke="#888" stroke-width="3"/><circle cx="50" cy="50" r="36" fill="#d8d8d8" stroke="#999" stroke-width="2"/><circle cx="50" cy="50" r="28" fill="#e8e8e8" stroke="#aaa" stroke-width="1.5"/><text x="50" y="44" text-anchor="middle" font-size="11" font-family="serif" fill="#666" font-weight="bold">ONE</text><text x="50" y="58" text-anchor="middle" font-size="10" font-family="serif" fill="#666">DOLLAR</text></svg></div>
+          <div class="ltx">Silver Coin 银币</div>
+        </div>
+        <div class="legend-box">
+          <div class="lic"><svg viewBox="0 0 100 110" width="52" height="58" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="88" height="98" rx="12" fill="#2ecc71"/><rect x="6" y="6" width="88" height="98" rx="12" fill="none" stroke="#27ae60" stroke-width="3"/><text x="50" y="76" text-anchor="middle" font-size="68" font-family="serif" font-weight="900" fill="white">發</text></svg></div>
+          <div class="ltx">Green 發 绿色发财</div>
+        </div>
+        <div class="legend-box">
+          <div class="lic"><svg viewBox="0 0 100 110" width="52" height="58" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="lg1" cx="38%" cy="35%"><stop offset="0%" stop-color="#f39c12"/><stop offset="100%" stop-color="#d35400"/></radialGradient></defs><ellipse cx="50" cy="65" rx="42" ry="40" fill="url(#lg1)"/><ellipse cx="38" cy="50" rx="10" ry="7" fill="rgba(255,255,255,0.2)" transform="rotate(-25 38 50)"/><path d="M48 25 Q50 10 55 20" stroke="#27ae60" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M52 18 Q62 8 68 18 Q60 16 52 18Z" fill="#27ae60"/></svg></div>
+          <div class="ltx">Mandarin Orange 桔子</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="level-label">🎮 Choose Your Level 选择难度</div>
+    <div class="level-row">
+      <button class="lbtn easy" onclick="startGame('easy')">
+        <span class="lbadge">2 cards</span><span class="lico">🌱</span>
+        <span class="lname">Easy</span><span class="lsub">容易</span>
+      </button>
+      <button class="lbtn med" onclick="startGame('medium')">
+        <span class="lbadge">3 cards</span><span class="lico">🌟</span>
+        <span class="lname">Medium</span><span class="lsub">中等</span>
+      </button>
+      <button class="lbtn hard" onclick="startGame('hard')">
+        <span class="lbadge">4 cards</span><span class="lico">🔥</span>
+        <span class="lname">Hard</span><span class="lsub">困难</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ GAME ═══ -->
+  <div class="screen" id="gameScreen">
+    <div class="game-bar">
+      <div class="glevel" id="glevel">EASY — 2 Cards</div>
+      <div class="gtimer" id="gtimer">5s</div>
+      <div class="gphase" id="gphase">Memorise!<br>记住！</div>
+    </div>
+    <div class="instruct" id="instruct">👀 Look carefully! Remember each card's position!</div>
+    <!-- Cards stage: absolutely positioned cards live here -->
+    <div class="cards-stage" id="cardsStage"></div>
+    <div class="prog-wrap" id="progWrap"><div class="prog-bar" id="progBar"></div></div>
+  </div>
+
+  <!-- ═══ ANSWER ═══ -->
+  <div class="screen" id="answerScreen">
+    <div class="ans-title">🤔 Where are the cards?</div>
+    <div class="ans-sub">猜猜看！选择正确的顺序</div>
+    <div class="ans-list" id="ansList"></div>
+    <button class="btn-line" onclick="goWelcome()">↩ Change Level 更换难度</button>
+  </div>
+
+  <!-- ═══ RESULT ═══ -->
+  <div class="screen" id="resultScreen">
+    <span class="res-emoji" id="resEmoji">🎉</span>
+    <div class="res-title" id="resTitle">Awesome!</div>
+    <div class="res-msg" id="resMsg"></div>
+    <div class="res-reveal">
+      <div class="res-rtitle">✨ The Correct Order Was 正确顺序：</div>
+      <div class="res-row" id="resRow"></div>
+    </div>
+    <button class="btn-gold" onclick="playAgain()">🎮 Play Again 再玩一次</button>
+    <button class="btn-line" onclick="goWelcome()">🏠 Change Level 更换难度</button>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// CARD DATA
+// ═══════════════════════════════════════════════════
+// SVG icons — drawn in code so they look identical on every phone
+var SVG_REDPACKET = '<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="84" height="94" rx="10" ry="10" fill="#e8192c"/><rect x="8" y="18" width="84" height="94" rx="10" ry="10" fill="none" stroke="#ffd700" stroke-width="4"/><path d="M8 38 Q50 58 92 38" fill="none" stroke="#ffd700" stroke-width="2.5" opacity="0.7"/><circle cx="50" cy="68" r="20" fill="#ffd700" opacity="0.9"/><text x="50" y="75" text-anchor="middle" font-size="22" font-family="serif" font-weight="900" fill="#c0392b">福</text><rect x="18" y="22" width="64" height="12" rx="4" fill="#c0392b"/><path d="M18 22 Q50 10 82 22" fill="#e8192c" stroke="#ffd700" stroke-width="2"/></svg>';
+
+var SVG_COIN = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="44" fill="#c0c0c0" stroke="#888" stroke-width="3"/><circle cx="50" cy="50" r="36" fill="#d8d8d8" stroke="#999" stroke-width="2"/><circle cx="50" cy="50" r="28" fill="#e8e8e8" stroke="#aaa" stroke-width="1.5"/><text x="50" y="44" text-anchor="middle" font-size="11" font-family="serif" fill="#666" font-weight="bold">ONE</text><text x="50" y="58" text-anchor="middle" font-size="10" font-family="serif" fill="#666">DOLLAR</text><circle cx="50" cy="50" r="6" fill="none" stroke="#aaa" stroke-width="1.5"/><ellipse cx="50" cy="50" rx="44" ry="44" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="3 4"/></svg>';
+
+var SVG_FA = '<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="88" height="98" rx="12" ry="12" fill="#2ecc71"/><rect x="6" y="6" width="88" height="98" rx="12" ry="12" fill="none" stroke="#27ae60" stroke-width="3"/><rect x="14" y="14" width="72" height="82" rx="8" ry="8" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"/><text x="50" y="76" text-anchor="middle" font-size="68" font-family="serif" font-weight="900" fill="white" style="text-shadow:0 2px 6px rgba(0,0,0,0.3)">發</text></svg>';
+
+var SVG_ORANGE = '<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="62" rx="42" ry="40" fill="#e67e22"/><ellipse cx="50" cy="62" rx="42" ry="40" fill="url(#og)"/><defs><radialGradient id="og" cx="38%" cy="35%"><stop offset="0%" stop-color="#f39c12"/><stop offset="100%" stop-color="#d35400"/></radialGradient></defs><ellipse cx="38" cy="46" rx="10" ry="7" fill="rgba(255,255,255,0.18)" transform="rotate(-25 38 46)"/><path d="M48 22 Q50 8 55 18" stroke="#27ae60" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M52 16 Q62 6 68 16 Q60 14 52 16Z" fill="#27ae60"/><path d="M48 24 Q40 10 35 20" stroke="#27ae60" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/></svg>';
+
+var CARDS = [
+  { id:'csye',    icon:SVG_REDPACKET, en:'Red Packet',    zh:'红包',   css:'csye' },
+  { id:'gingot',  icon:SVG_COIN,      en:'Silver Coin',   zh:'银币',   css:'cgin' },
+  { id:'fa',      icon:SVG_FA,        en:'Green 發',      zh:'绿色發', css:'cfac' },
+  { id:'mandarin',icon:SVG_ORANGE,    en:'Mandarin',      zh:'桔子',   css:'cman' }
+];
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+var gameLevel    = 'easy';
+var cardOrder    = [];   // current logical order of cards (indices into cardEls)
+var cardEls      = [];   // the DOM .card-wrap elements, one per card
+var slotPositions= [];   // [{left, top}] pixel positions for each slot
+var correctAnswer= [];   // final card order after all shuffling
+
+var timerInt  = null;
+var shuffleInt= null;
+var barInt    = null;
+
+var REVEAL  = 5;
+var SHUFFLE = 30;
+
+// Card size (set dynamically)
+var CARD_W = 115;
+var CARD_H = 165;
+var CARD_GAP = 14;
+
+// ═══════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════
+var actx = null;
+function getCtx() {
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  }
+  return actx;
+}
+function playTone(freq, type, vol, delay, dur) {
+  var ctx = getCtx(); if (!ctx) return;
+  try {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    var t = ctx.currentTime + delay;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + dur);
+  } catch(e) {}
+}
+function playWin()  { [523,659,784,1047,1319].forEach(function(f,i){ playTone(f,'sine',0.28,i*0.12,0.35); }); }
+function playLose() { [380,330,270].forEach(function(f,i){ playTone(f,'sawtooth',0.2,i*0.16,0.3); }); }
+function playTick() { playTone(880,'square',0.06,0,0.05); }
+
+// ═══════════════════════════════════════════════════
+// SCREENS
+// ═══════════════════════════════════════════════════
+function showScreen(id) {
+  var all = document.querySelectorAll('.screen');
+  for (var i=0; i<all.length; i++) all[i].classList.remove('active');
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function goWelcome() { clearTimers(); showScreen('welcomeScreen'); }
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+function shuffleArr(arr) {
+  var a = arr.slice();
+  for (var i=a.length-1; i>0; i--) {
+    var j = Math.floor(Math.random()*(i+1));
+    var t=a[i]; a[i]=a[j]; a[j]=t;
+  }
+  return a;
+}
+function sameOrder(a,b) {
+  if (a.length!==b.length) return false;
+  for (var i=0;i<a.length;i++) if (a[i].id!==b[i].id) return false;
+  return true;
+}
+function permutations(arr) {
+  if (arr.length<=1) return [arr.slice()];
+  var res=[];
+  for (var i=0;i<arr.length;i++) {
+    var rest=arr.slice(0,i).concat(arr.slice(i+1));
+    var ps=permutations(rest);
+    for (var j=0;j<ps.length;j++) res.push([arr[i]].concat(ps[j]));
+  }
+  return res;
+}
+function clearTimers() {
+  if (timerInt)   clearInterval(timerInt);
+  if (shuffleInt) clearInterval(shuffleInt);
+  if (barInt)     clearInterval(barInt);
+  timerInt = shuffleInt = barInt = null;
+}
+function setTimer(v, urgent) {
+  var el = document.getElementById('gtimer');
+  el.textContent = v+'s';
+  el.className = 'gtimer'+(urgent?' urg':'');
+}
+function setPhase(h)   { document.getElementById('gphase').innerHTML   = h; }
+function setInstruct(h){ document.getElementById('instruct').innerHTML = h; }
+
+// ═══════════════════════════════════════════════════
+// LANTERNS
+// ═══════════════════════════════════════════════════
+(function(){
+  var c=document.getElementById('lanterns'), ems=['🏮','🧧','🌸','✨','🎋'];
+  for (var i=0;i<14;i++) {
+    var d=document.createElement('div'); d.className='lantern';
+    d.textContent=ems[i%ems.length];
+    d.style.left=(Math.random()*100)+'%';
+    d.style.fontSize=(1.4+Math.random()*1.5)+'rem';
+    d.style.animationDuration=(12+Math.random()*14)+'s';
+    d.style.animationDelay=(-Math.random()*22)+'s';
+    c.appendChild(d);
+  }
+})();
+
+// ═══════════════════════════════════════════════════
+// CARD SIZE based on screen width & card count
+// ═══════════════════════════════════════════════════
+function getCardSize(count) {
+  var maxW = Math.min(document.getElementById('app').offsetWidth - 28, 640);
+  // total width needed = count*cardW + (count-1)*gap
+  // solve for cardW: cardW = (maxW - (count-1)*gap) / count
+  var gap = 14;
+  var w = Math.floor((maxW - (count-1)*gap) / count);
+  w = Math.min(w, 140); // max 140px wide
+  w = Math.max(w, 70);  // min 70px wide
+  var h = Math.round(w * 1.44); // maintain aspect ratio ~1:1.44
+  return { w:w, h:h, gap:gap };
+}
+
+// ═══════════════════════════════════════════════════
+// BUILD SLOT POSITIONS (where each numbered slot sits)
+// ═══════════════════════════════════════════════════
+function buildSlots(count, cw, ch, gap) {
+  // Center the row
+  var totalW = count*cw + (count-1)*gap;
+  var stageW = document.getElementById('cardsStage').offsetWidth;
+  var startX = Math.max(0, Math.floor((stageW - totalW)/2));
+  var slots = [];
+  for (var i=0;i<count;i++) {
+    slots.push({ left: startX + i*(cw+gap), top: 26 }); // 26px for position label
+  }
+  return slots;
+}
+
+// ═══════════════════════════════════════════════════
+// CREATE CARD DOM ELEMENTS
+// ═══════════════════════════════════════════════════
+function buildCardEls(cards, cw, ch, showFront) {
+  var stage = document.getElementById('cardsStage');
+  stage.innerHTML = '';
+  // Set stage height
+  stage.style.height = (ch + 30) + 'px'; // +30 for position label
+
+  cardEls = [];
+  for (var i=0;i<cards.length;i++) {
+    var card = cards[i];
+
+    var wrap = document.createElement('div');
+    wrap.className = 'card-wrap';
+    wrap.style.width  = cw + 'px';
+    wrap.style.height = ch + 'px';
+    wrap.style.left   = '0px';
+    wrap.style.top    = '26px'; // space for label
+
+    var inner = document.createElement('div');
+    inner.className = 'card-inner' + (showFront?' open':'');
+
+    // Back
+    var back = document.createElement('div');
+    back.className = 'cback';
+    back.innerHTML = '<div class="cback-char">囍</div><div class="cback-bot">🧧</div><div class="cback-rim"></div>';
+
+    // Front
+    var front = document.createElement('div');
+    front.className = 'cfront ' + card.css;
+    front.innerHTML = '<div class="cicon">'+card.icon+'</div><div class="clabel">'+card.en+'<br>'+card.zh+'</div>';
+    // Make sure SVG fills the cicon div
+    var svg = front.querySelector('svg');
+    if (svg) { svg.style.width='100%'; svg.style.height='100%'; }
+
+    inner.appendChild(back);
+    inner.appendChild(front);
+    wrap.appendChild(inner);
+    stage.appendChild(wrap);
+    cardEls.push(wrap);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PLACE CARDS at their slot positions (no animation)
+// ═══════════════════════════════════════════════════
+function placeCards(animated) {
+  // cardOrder[slotIndex] = cardElIndex
+  for (var slot=0; slot<cardOrder.length; slot++) {
+    var el  = cardEls[cardOrder[slot]];
+    var pos = slotPositions[slot];
+    if (!animated) {
+      // Disable transition temporarily
+      el.style.transition = 'none';
+    }
+    el.style.left = pos.left + 'px';
+    el.style.top  = (pos.top + 26) + 'px'; // +26 for label row
+  }
+  // Also update position labels
+  updatePosLabels();
+}
+
+// ═══════════════════════════════════════════════════
+// POSITION LABELS (float above each slot)
+// ═══════════════════════════════════════════════════
+function updatePosLabels() {
+  // Remove existing labels
+  var stage = document.getElementById('cardsStage');
+  var oldLabels = stage.querySelectorAll('.cpos-label');
+  for (var i=0;i<oldLabels.length;i++) oldLabels[i].parentNode.removeChild(oldLabels[i]);
+
+  for (var slot=0; slot<slotPositions.length; slot++) {
+    var pos = slotPositions[slot];
+    var lbl = document.createElement('div');
+    lbl.className = 'cpos-label';
+    lbl.style.position  = 'absolute';
+    lbl.style.left      = pos.left + 'px';
+    lbl.style.top       = '2px';
+    lbl.style.width     = CARD_W + 'px';
+    lbl.textContent     = 'Position ' + (slot+1);
+    stage.appendChild(lbl);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// START GAME
+// ═══════════════════════════════════════════════════
+function startGame(level) {
+  gameLevel = level;
+  clearTimers();
+
+  var count   = (level==='easy')?2 : (level==='medium')?3 : 4;
+  var sz      = getCardSize(count);
+  CARD_W = sz.w; CARD_H = sz.h; CARD_GAP = sz.gap;
+
+  // Pick cards randomly
+  var picked  = shuffleArr(CARDS).slice(0, count);
+  // Randomise initial display order
+  var displayOrder = shuffleArr(picked);
+
+  // cardOrder[slot] = index into displayOrder (and cardEls)
+  cardOrder = [];
+  for (var i=0;i<count;i++) cardOrder.push(i);
+
+  showScreen('gameScreen');
+  document.getElementById('glevel').textContent =
+    {easy:'🌱 EASY — 2 Cards', medium:'🌟 MEDIUM — 3 Cards', hard:'🔥 HARD — 4 Cards'}[level];
+  document.getElementById('progWrap').style.display = 'none';
+
+  // Build DOM cards
+  buildCardEls(displayOrder, CARD_W, CARD_H, true);
+
+  // Build slot positions AFTER stage is in DOM
+  setTimeout(function() {
+    slotPositions = buildSlots(count, CARD_W, CARD_H, CARD_GAP);
+    // Update label widths now we know CARD_W
+    // Place cards instantly (no animation on start)
+    for (var slot=0; slot<cardOrder.length; slot++) {
+      var el  = cardEls[cardOrder[slot]];
+      var pos = slotPositions[slot];
+      el.style.transition = 'none';
+      el.style.left = pos.left + 'px';
+      el.style.top  = (pos.top !== undefined ? pos.top : 0) + 26 + 'px';
+    }
+    updatePosLabels();
+
+    doReveal();
+  }, 60);
+}
+
+// ═══════════════════════════════════════════════════
+// PHASE 1: REVEAL
+// ═══════════════════════════════════════════════════
+function doReveal() {
+  var t = REVEAL;
+  setTimer(t, false);
+  setPhase('Memorise!<br>记住！');
+  setInstruct('👀 Look carefully! Remember each card\'s position!<br>仔细看！记住每张牌的位置！');
+
+  timerInt = setInterval(function(){
+    t--;
+    setTimer(t, t<=2);
+    if (t<=3) playTick();
+    if (t<=0) {
+      clearInterval(timerInt); timerInt=null;
+      flipAllDown();
+    }
+  }, 1000);
+}
+
+function flipAllDown() {
+  for (var i=0;i<cardEls.length;i++) {
+    cardEls[i].querySelector('.card-inner').classList.remove('open');
+  }
+  setTimeout(doShuffle, 750);
+}
+
+// ═══════════════════════════════════════════════════
+// PHASE 2: SHUFFLE — real position swapping
+// ═══════════════════════════════════════════════════
+
+// Perform one swap: pick two different slots, animate cards moving to each other's position
+var swapBusy = false;
+
+function doOneSwap(onDone) {
+  var n = cardOrder.length;
+  if (n < 2) { if(onDone) onDone(); return; }
+
+  // Pick two different random slots
+  var a = Math.floor(Math.random()*n);
+  var b;
+  do { b = Math.floor(Math.random()*n); } while (b===a);
+
+  var elA = cardEls[cardOrder[a]];
+  var elB = cardEls[cardOrder[b]];
+
+  var posA = slotPositions[a];
+  var posB = slotPositions[b];
+
+  // Lift both cards slightly during travel
+  elA.style.zIndex = '10';
+  elB.style.zIndex = '9';
+
+  // Re-enable smooth transition
+  elA.style.transition = 'left 1.1s cubic-bezier(0.4,0,0.2,1), top 1.1s cubic-bezier(0.4,0,0.2,1), transform 0.4s ease';
+  elB.style.transition = 'left 1.1s cubic-bezier(0.4,0,0.2,1), top 1.1s cubic-bezier(0.4,0,0.2,1), transform 0.4s ease';
+
+  // Arc effect: lift during travel
+  elA.style.transform = 'scale(1.07) translateY(-10px)';
+  elB.style.transform = 'scale(1.05) translateY(-6px)';
+
+  // Move to swapped positions
+  elA.style.left = posB.left + 'px';
+  elB.style.left = posA.left + 'px';
+  // top stays the same (single row), but if we ever do 2 rows, this handles it:
+  elA.style.top  = (posB.top + 26) + 'px';
+  elB.style.top  = (posA.top + 26) + 'px';
+
+  // After travel, settle back down
+  setTimeout(function(){
+    elA.style.transform = 'scale(1) translateY(0)';
+    elB.style.transform = 'scale(1) translateY(0)';
+    elA.style.zIndex = '1';
+    elB.style.zIndex = '1';
+  }, 800);
+
+  // Update logical order
+  var tmp = cardOrder[a]; cardOrder[a] = cardOrder[b]; cardOrder[b] = tmp;
+
+  // Callback after animation completes
+  setTimeout(function(){
+    if (onDone) onDone();
+  }, 1200); // slightly longer than transition so next swap starts cleanly
+}
+
+function doShuffle() {
+  var t = SHUFFLE;
+  setTimer(t, false);
+  setPhase('Shuffling!<br>洗牌中！');
+  setInstruct('🔄 Watch the cards swap! Keep track of each one!<br>专注追踪！别让它们迷惑你！');
+
+  var pw = document.getElementById('progWrap');
+  var pb = document.getElementById('progBar');
+  pw.style.display = 'block';
+  pb.style.width   = '100%';
+
+  var t0 = Date.now();
+  barInt = setInterval(function(){
+    var pct = Math.max(0, 100 - ((Date.now()-t0)/(SHUFFLE*1000)*100));
+    pb.style.width = pct+'%';
+  }, 80);
+
+  timerInt = setInterval(function(){
+    t--;
+    setTimer(t, t<=5);
+    if (t<=5) playTick();
+    if (t<=0) {
+      clearInterval(timerInt); timerInt=null;
+      clearInterval(barInt);   barInt=null;
+      clearInterval(shuffleInt); shuffleInt=null;
+      pw.style.display='none';
+      endShuffle();
+    }
+  }, 1000);
+
+  // Queue up swaps — one swap every 3.4s (1.1s animation + 2s pause) so seniors can track
+  var swapDelay = 3400; // ms between swap starts
+  var elapsed   = 0;
+  shuffleInt = setInterval(function(){
+    elapsed += swapDelay;
+    if (elapsed >= SHUFFLE*1000 - 600) return; // stop near end
+    doOneSwap(null);
+  }, swapDelay);
+}
+
+function endShuffle() {
+  // Record final positions as the answer
+  // correctAnswer[slot] = the card that ended up there
+  // We need to map slot -> card
+  // cardOrder[slot] = index into cardEls
+  // We need the original card data for each cardEl
+  // We stored displayOrder when building — but easiest is to read from DOM
+  var stage = document.getElementById('cardsStage');
+  var wraps = stage.querySelectorAll('.card-wrap');
+
+  // Rebuild answer from current cardOrder + displayed cards
+  // The card at slot i = cardEls[cardOrder[i]], which has a front div
+  correctAnswer = [];
+  for (var slot=0; slot<cardOrder.length; slot++) {
+    var el    = cardEls[cardOrder[slot]];
+    var front = el.querySelector('.cfront');
+    // identify card by css class
+    var card  = getCardByCss(front);
+    correctAnswer.push(card);
+  }
+
+  setTimeout(doAnswerScreen, 500);
+}
+
+function getCardByCss(frontEl) {
+  for (var i=0;i<CARDS.length;i++) {
+    if (frontEl.classList.contains(CARDS[i].css)) return CARDS[i];
+  }
+  return CARDS[0];
+}
+
+// ═══════════════════════════════════════════════════
+// PHASE 3: ANSWER
+// ═══════════════════════════════════════════════════
+function doAnswerScreen() {
+  showScreen('answerScreen');
+
+  var all    = permutations(correctAnswer);
+  var wrongs = [];
+  for (var i=0;i<all.length;i++) {
+    if (!sameOrder(all[i], correctAnswer)) wrongs.push(all[i]);
+  }
+  wrongs = shuffleArr(wrongs).slice(0,3);
+
+  var opts = shuffleArr(
+    [{cards:correctAnswer, ok:true}].concat(
+      wrongs.map(function(w){ return {cards:w, ok:false}; })
+    )
+  );
+
+  var letters = ['A','B','C','D'];
+  var list    = document.getElementById('ansList');
+  list.innerHTML = '';
+
+  for (var i=0;i<opts.length;i++) {
+    (function(opt,idx){
+      var btn = document.createElement('button');
+      btn.className = 'ans-btn';
+      var icons = opt.cards.map(function(c){ return '<span style="display:inline-block;width:28px;height:28px;vertical-align:middle">'+c.icon+'</span>'; }).join(' → ');
+      var text  = opt.cards.map(function(c,n){ return '<b>Pos '+(n+1)+':</b> '+c.en+' '+c.zh; }).join(' &nbsp;|&nbsp; ');
+      btn.innerHTML =
+        '<div class="ans-letter">'+letters[idx]+'</div>'+
+        '<div class="ans-content">'+
+          '<div class="ans-icons">'+icons+'</div>'+
+          '<div class="ans-text">'+text+'</div>'+
+        '</div>';
+      btn.onclick = function(){ handleAnswer(opt.ok, btn, opts); };
+      list.appendChild(btn);
+    })(opts[i], i);
+  }
+}
+
+function handleAnswer(ok, btn, opts) {
+  var btns = document.querySelectorAll('.ans-btn');
+  for (var i=0;i<btns.length;i++) btns[i].style.pointerEvents='none';
+  btn.classList.add(ok?'correct':'wrong');
+  if (ok) {
+    playWin();
+    setTimeout(function(){ showResult(true); }, 800);
+  } else {
+    playLose();
+    for (var i=0;i<btns.length;i++) { if(opts[i]&&opts[i].ok) btns[i].classList.add('correct'); }
+    setTimeout(function(){ showResult(false); }, 1300);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// RESULT
+// ═══════════════════════════════════════════════════
+function showResult(won) {
+  showScreen('resultScreen');
+  document.getElementById('resEmoji').textContent = won?'🎊':'💪';
+  var t = document.getElementById('resTitle');
+  t.textContent = won?'🎉 Awesome! 太棒了！':'💪 Better Luck Next Time!';
+  t.className   = 'res-title '+(won?'win':'lose');
+  document.getElementById('resMsg').textContent = won
+    ?'Excellent memory! Your brain is sharp & strong! 你的记忆力太厉害了！继续加油！'
+    :'Keep training! Every try makes your brain stronger! 继续练习！每次尝试都让大脑更强壮！';
+
+  var row = document.getElementById('resRow'); row.innerHTML='';
+  for (var i=0;i<correctAnswer.length;i++) {
+    var c=correctAnswer[i];
+    var item=document.createElement('div'); item.className='res-item';
+    item.innerHTML='<div class="res-mini '+c.css+'" style="overflow:hidden;padding:4px">'+c.icon+'</div><div class="res-plabel">Pos '+(i+1)+'<br>'+c.zh+'</div>';
+    // Scale SVG inside mini
+    var svg = item.querySelector('svg');
+    if(svg){ svg.style.width='100%'; svg.style.height='100%'; }
+    row.appendChild(item);
+  }
+  if(won){ spawnConfetti(); spawnFireworks(); }
+}
+
+function playAgain() { startGame(gameLevel); }
+
+// ═══════════════════════════════════════════════════
+// CONFETTI + FIREWORKS
+// ═══════════════════════════════════════════════════
+function spawnConfetti() {
+  var colors=['#ffd700','#c0392b','#27ae60','#e67e22','#ffffff','#ff69b4'];
+  for (var i=0;i<60;i++) {
+    (function(idx){
+      var el=document.createElement('div'); el.className='cpx';
+      var s=6+Math.random()*8;
+      el.style.cssText='left:'+(Math.random()*100)+'vw;top:-12px;width:'+s+'px;height:'+s+'px;background:'+colors[idx%colors.length]+';animation-duration:'+(1.5+Math.random()*2)+'s;animation-delay:'+(Math.random()*0.7)+'s;border-radius:'+(Math.random()>0.5?'50%':'2px')+';';
+      document.body.appendChild(el);
+      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },3500);
+    })(i);
+  }
+}
+function spawnFireworks() {
+  var colors=['#ffd700','#ff4444','#44ff88','#ff8800','#ffffff'];
+  for (var b=0;b<6;b++) {
+    (function(burst){
+      setTimeout(function(){
+        var x=15+Math.random()*70, y=8+Math.random()*45;
+        for (var p=0;p<14;p++) {
+          (function(pi){
+            var el=document.createElement('div'); el.className='fwp';
+            var angle=(pi/14)*Math.PI*2, dist=65+Math.random()*90;
+            el.style.cssText='left:'+x+'vw;top:'+y+'vh;background:'+colors[pi%colors.length]+';--tx:'+(Math.cos(angle)*dist)+'px;--ty:'+(Math.sin(angle)*dist)+'px;';
+            document.body.appendChild(el);
+            setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },1600);
+          })(p);
+        }
+      }, burst*280);
+    })(b);
+  }
+}
+</script>
+</body>
+</html>
